@@ -11,11 +11,15 @@ type UserArchives struct {
 	Archives []string `json:"archives"`
 }
 
-type MonthlyGames struct {
-	Games []map[string]string `json:"games"`
+type Game struct {
+	PGN string `json:"pgn"`
 }
 
-func usergames(client *req.Client, url string) []string {
+type MonthlyGames struct {
+	Games []Game `json:"games"`
+}
+
+func usergames(client *req.Client, url string) []Game {
 	monthly := &MonthlyGames{}
 	resp, err := client.R().SetHeader("Accept", "application/vnd.github.v3+json").
 		SetResult(monthly).
@@ -23,19 +27,16 @@ func usergames(client *req.Client, url string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	games := []Game{}
 	if resp.IsSuccess() {
-		for _, games := range monthly.Games {
-			for index, game := range games {
-				fmt.Println(
-					fmt.Sprintf("%d: %+v", index, game))
-			}
+		for _, game := range monthly.Games {
+			games = append(games, game)
 		}
 	}
-
-	return []string{}
+	return games
 }
 
-func archives(client *req.Client, username string) {
+func archives(client *req.Client, username string) []Game {
 	archives := &UserArchives{}
 	resp, err := client.R().SetHeader("Accept", "application/vnd.github.v3+json").
 		SetPathParam("username", username).
@@ -45,12 +46,13 @@ func archives(client *req.Client, username string) {
 		log.Fatal(err)
 	}
 	// list of PGNs
-	games := []string{}
+	games := []Game{}
 	if resp.IsSuccess() {
 		for _, url := range archives.Archives {
 			games = append(games, usergames(client, url)...)
 		}
 	}
+	return games
 }
 
 func main() {
@@ -59,5 +61,8 @@ func main() {
 
 	fmt.Println("Chess is dumb")
 
-	archives(client, "lwnexgen")
+	for _, game := range archives(client, "lwnexgen") {
+		Blunders(game.PGN)
+		break
+	}
 }
